@@ -62,8 +62,11 @@ void clock_setup(void)
 {
 	/* Base board frequency, set to 168Mhz */
 	rcc_clock_setup_pll(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
+    
+    // Utilizado en control de giroscopio
+    //rcc_clock_setup_hse_3v3(&rcc_hsi_configs[RCC_CLOCK_3V3_84MHZ]);
 
-	/* clock rate / 168000 to get 1mS interrupt rate */
+    /* clock rate / 168000 to get 1mS interrupt rate */
 	systick_set_reload(168000);
 	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
 	systick_counter_enable();

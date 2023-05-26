@@ -1,6 +1,6 @@
 OBJS = sdram.o clock.o console.o lcd-spi.o gfx.o
 
-BINARY = lcd-serial
+BINARY = sismografo
 
 # we use sin/cos from the library
 LDLIBS += -lm

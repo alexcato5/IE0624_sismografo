@@ -67,6 +67,8 @@ static void spi_setup(void)
 	//spi_fifo_reception_threshold_8bit(SPI5);
 	SPI_I2SCFGR(SPI5) &= ~SPI_I2SCFGR_I2SMOD;
 	spi_enable(SPI5);
+
+
 }
 
 /*
@@ -92,13 +94,7 @@ static void usart_setup(void)
 /*	usart_enable(USART2);
 }
 */
-/*static void gpio_setup(void)
-{
-	rcc_periph_clock_enable(RCC_GPIOE);
-	gpio_mode_setup(GPIOE, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE,
-		GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13 |
-		GPIO14 | GPIO15);
-}*/
+
 /*
 static void my_usart_print_int(uint32_t usart, int32_t value)
 {
@@ -144,6 +140,10 @@ static void my_usart_print_int(uint32_t usart, int32_t value)
 
 #define GYR_OUT_X_L		0x28
 #define GYR_OUT_X_H		0x29
+#define GYR_OUT_Y_L		0x2A
+#define GYR_OUT_Y_H		0x2B
+#define GYR_OUT_Z_L		0x2C
+#define GYR_OUT_Z_H		0x2D
 
 /* FIN CODIGO GIROSCOPIO */
 
@@ -153,40 +153,39 @@ static void my_usart_print_int(uint32_t usart, int32_t value)
  */
 int main(void)
 {
-	int p1, p2, p3;
 
 	clock_setup();
 	console_setup(115200);
-	spi_setup();
-	sdram_init();
-	lcd_spi_init();
 
 	/******************************* Para uso del giroscopio*/
+	spi_setup();
 	uint8_t temp;
-	int16_t gyr_x;
-	
-	int16_t gyr_y;
-	int16_t gyr_z;
+	int16_t gyr_x = 0;
+	int16_t gyr_y = 0;
+	int16_t gyr_z = 0;
 
-	gpio_setup();
+	uint8_t usart_encendido = 0;
+
 //	usart_setup();
 
-	gpio_clear(GPIOE, GPIO3);
-	spi_send(SPI1, GYR_CTRL_REG1);
-	spi_read(SPI1);
-	spi_send(SPI1, GYR_CTRL_REG1_PD | GYR_CTRL_REG1_XEN |
+	gpio_clear(GPIOC, GPIO1);
+	spi_send(SPI5, GYR_CTRL_REG1);
+	spi_read(SPI5);
+	spi_send(SPI5, GYR_CTRL_REG1_PD | GYR_CTRL_REG1_XEN |
 			GYR_CTRL_REG1_YEN | GYR_CTRL_REG1_ZEN |
 			(3 << GYR_CTRL_REG1_BW_SHIFT));
-	spi_read(SPI1);
-	gpio_set(GPIOE, GPIO3);
+	spi_read(SPI5);
+	gpio_set(GPIOC, GPIO1);
 
-	gpio_clear(GPIOE, GPIO3);
-	spi_send(SPI1, GYR_CTRL_REG4);
-	spi_read(SPI1);
-	spi_send(SPI1, (1 << GYR_CTRL_REG4_FS_SHIFT));
-	spi_read(SPI1);
-	gpio_set(GPIOE, GPIO3);
+	gpio_clear(GPIOC, GPIO1);
+	spi_send(SPI5, GYR_CTRL_REG4);
+	spi_read(SPI5);
+	spi_send(SPI5, (1 << GYR_CTRL_REG4_FS_SHIFT));
+	spi_read(SPI5);
+	gpio_set(GPIOC, GPIO1);
 
+	sdram_init();
+	lcd_spi_init();
 	/***************************************************************/
 
 	//console_puts("LCD Initialized\n");
@@ -209,77 +208,115 @@ int main(void)
 	gfx_setCursor(15, 86);
 	gfx_puts("B61325 Alexander Calderon");
 	gfx_setCursor(15, 97);
-	gfx_puts("B6xxxx Johander Anchia");
+	gfx_puts("B60425 Johander Anchia");
 	lcd_show_frame();
 	msleep(2000);
 /*	(void) console_getc(1); */
-	p1 = 0;
-	p2 = 45;
-	p3 = 90;
+
 	while (1) {
 		gfx_setTextColor(LCD_YELLOW, LCD_BLACK);
-		gfx_setTextSize(3);
+		gfx_setTextSize(2);
 		gfx_fillScreen(LCD_BLACK);
 		gfx_setCursor(15, 36);
-		gfx_puts("SISMOGRAFO");
-		gfx_fillCircle(40, 120, 40, LCD_WHITE);
-		gfx_fillCircle(120, 120, 40, LCD_GREY);
-		gfx_fillCircle(200, 120, 40, LCD_YELLOW);
+		gfx_puts("- SISMOGRAFO -");
+		gfx_fillCircle(40, 120, 20+gyr_x*(0.00875F), LCD_WHITE);
+		gfx_fillCircle(120, 120, 20+gyr_y*(0.00875F), LCD_GREY);
+		gfx_fillCircle(200, 120, 20+gyr_z*(0.00875F), LCD_YELLOW);
 
 		/*******************************************************************/
-		gpio_clear(GPIOE, GPIO3);
-		spi_send(SPI1, GYR_WHO_AM_I | GYR_RNW);
-		spi_read(SPI1);
-		spi_send(SPI1, 0);
-		temp=spi_read(SPI1);
+		gpio_clear(GPIOC, GPIO1);
+		spi_send(SPI5, GYR_WHO_AM_I | GYR_RNW);
+		spi_read(SPI5);
+		spi_send(SPI5, 0);
+		temp=spi_read(SPI5);
 //		my_usart_print_int(USART2, (temp));
-		gpio_set(GPIOE, GPIO3);
+		gpio_set(GPIOC, GPIO1);
 
-		gpio_clear(GPIOE, GPIO3);
-		spi_send(SPI1, GYR_STATUS_REG | GYR_RNW);
-		spi_read(SPI1);
-		spi_send(SPI1, 0);
-		temp=spi_read(SPI1);
+		gpio_clear(GPIOC, GPIO1);
+		spi_send(SPI5, GYR_STATUS_REG | GYR_RNW);
+		spi_read(SPI5);
+		spi_send(SPI5, 0);
+		temp=spi_read(SPI5);
 //		my_usart_print_int(USART2, (temp));
-		gpio_set(GPIOE, GPIO3);
+		gpio_set(GPIOC, GPIO1);
 
-		gpio_clear(GPIOE, GPIO3);
-		spi_send(SPI1, GYR_OUT_TEMP | GYR_RNW);
-		spi_read(SPI1);
-		spi_send(SPI1, 0);
-		temp=spi_read(SPI1);
+		gpio_clear(GPIOC, GPIO1);
+		spi_send(SPI5, GYR_OUT_TEMP | GYR_RNW);
+		spi_read(SPI5);
+		spi_send(SPI5, 0);
+		temp=spi_read(SPI5);
 //		my_usart_print_int(USART2, (temp));
-		gpio_set(GPIOE, GPIO3);
+		gpio_set(GPIOC, GPIO1);
 
-		gpio_clear(GPIOE, GPIO3);
-		spi_send(SPI1, GYR_OUT_X_L | GYR_RNW);
-		spi_read(SPI1);
-		spi_send(SPI1, 0);
-		gyr_x=spi_read(SPI1);
-		gpio_set(GPIOE, GPIO3);
+		gpio_clear(GPIOC, GPIO1);
+		spi_send(SPI5, GYR_OUT_X_L | GYR_RNW);
+		spi_read(SPI5);
+		spi_send(SPI5, 0);
+		gyr_x=spi_read(SPI5);
+		gpio_set(GPIOC, GPIO1);
 
-		gpio_clear(GPIOE, GPIO3);
-		spi_send(SPI1, GYR_OUT_X_H | GYR_RNW);
-		spi_read(SPI1);
-		spi_send(SPI1, 0);
-		gyr_x|=spi_read(SPI1) << 8;
+		gpio_clear(GPIOC, GPIO1);
+		spi_send(SPI5, GYR_OUT_X_H | GYR_RNW);
+		spi_read(SPI5);
+		spi_send(SPI5, 0);
+		gyr_x|=spi_read(SPI5) << 8;
 //		my_usart_print_int(USART2, (gyr_x));
-		gpio_set(GPIOE, GPIO3);
+		gpio_set(GPIOC, GPIO1);
+
+		gpio_clear(GPIOC, GPIO1);
+		spi_send(SPI5, GYR_OUT_Y_L | GYR_RNW);
+		spi_read(SPI5);
+		spi_send(SPI5, 0);
+		gyr_y=spi_read(SPI5);
+		gpio_set(GPIOC, GPIO1);
+
+		gpio_clear(GPIOC, GPIO1);
+		spi_send(SPI5, GYR_OUT_Y_H | GYR_RNW);
+		spi_read(SPI5);
+		spi_send(SPI5, 0);
+		gyr_y|=spi_read(SPI5) << 8;
+//		my_usart_print_int(USART2, (gyr_y));
+		gpio_set(GPIOC, GPIO1);
+
+		gpio_clear(GPIOC, GPIO1);
+		spi_send(SPI5, GYR_OUT_Z_L | GYR_RNW);
+		spi_read(SPI5);
+		spi_send(SPI5, 0);
+		gyr_z=spi_read(SPI5);
+		gpio_set(GPIOC, GPIO1);
+
+		gpio_clear(GPIOC, GPIO1);
+		spi_send(SPI5, GYR_OUT_Z_H | GYR_RNW);
+		spi_read(SPI5);
+		spi_send(SPI5, 0);
+		gyr_z|=spi_read(SPI5) << 8;
+//		my_usart_print_int(USART2, (gyr_z));
+		gpio_set(GPIOC, GPIO1);
 		/************************************************************/
 
 		// Indicador de giroscopio
 		gfx_setTextSize(2);
 		gfx_setCursor(30, 200);
 		gfx_puts("X: ");
-		gfx_setCursor(45, 200);
+		gfx_setCursor(15, 240);
 		char gyr_x_str[16];
-		sprintf(gyr_x_str, "%d", gyr_x);
+		sprintf(gyr_x_str, "%d", (int)(gyr_x*0.00875F));
 		gfx_puts(gyr_x_str);
+
 		gfx_setCursor(110, 200);
 		gfx_puts("Y: ");
+		gfx_setCursor(100, 240);
+		char gyr_y_str[16];
+		sprintf(gyr_y_str, "%d", (int)(gyr_y*0.00875F));
+		gfx_puts(gyr_y_str);
+		
 		gfx_setCursor(190, 200);
 		gfx_puts("Z: ");
-
+		gfx_setCursor(175, 240);
+		char gyr_z_str[16];
+		sprintf(gyr_z_str, "%d", (int)(gyr_z*0.00875F));
+		gfx_puts(gyr_z_str);
+		
 		// Indicador de batería
 		gfx_setTextSize(1);                  
 		gfx_setCursor(5, 310);
@@ -287,7 +324,8 @@ int main(void)
 
 		// Indicador de USART
 		gfx_setCursor(155, 310);
-		gfx_puts("USART: OFF");
+		if (usart_encendido){ gfx_puts("USART:  ON"); }
+		else { gfx_puts("USART: OFF"); }
 		
 		lcd_show_frame();
 	}

@@ -68,34 +68,41 @@ static void spi_setup(void)
 	SPI_I2SCFGR(SPI5) &= ~SPI_I2SCFGR_I2SMOD;
 	spi_enable(SPI5);
 
+// +++++++++++++++++++++++++++++++++ BATERÍA +++++++++++++++++++++
+// Activo los pines necesarios, puertos G, 13 y 14
+	/* Enable GPIOG clock. */
+	rcc_periph_clock_enable(RCC_GPIOG);
+	/* Set GPIO13 (in GPIO port G) to 'output push-pull'. */
+	gpio_mode_setup(GPIOG, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13 | GPIO14);
+// ++++++++++++++++++++++++++++++++++ FIN BATERÍA ++++++++++++++++++++
 
-}
 
-/*
+}//fin del void set up
+
+// ++++++++++++++++++++++++++  COMUNICACIÓN USART +++++++++++++++
+
 static void usart_setup(void)
 {
-	/* Enable clocks for GPIO port A (for GPIO_USART2_TX) and USART2. */
-/*	rcc_periph_clock_enable(RCC_USART2);
+	Enable clocks for GPIO port A (for GPIO_USART2_TX) and USART2. 
+	rcc_periph_clock_enable(RCC_USART2);
 	rcc_periph_clock_enable(RCC_GPIOA);
 
-	/* Setup GPIO pin GPIO_USART2_TX/GPIO9 on GPIO port A for transmit. */
-/*	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO2 | GPIO3);
+	Setup GPIO pin GPIO_USART2_TX/GPIO9 on GPIO port A for transmit. 
+	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO2 | GPIO3);
 	gpio_set_af(GPIOA, GPIO_AF7, GPIO2| GPIO3);
 
-	/* Setup UART parameters. */
-/*	usart_set_baudrate(USART2, 115200);
+	Setup UART parameters. */
+	usart_set_baudrate(USART2, 115200);
 	usart_set_databits(USART2, 8);
 	usart_set_stopbits(USART2, USART_STOPBITS_1);
 	usart_set_mode(USART2, USART_MODE_TX_RX);
 	usart_set_parity(USART2, USART_PARITY_NONE);
 	usart_set_flow_control(USART2, USART_FLOWCONTROL_NONE);
 
-	/* Finally enable the USART. */
-/*	usart_enable(USART2);
+	 Finally enable the USART. 
+	usart_enable(USART2);
 }
-*/
 
-/*
 static void my_usart_print_int(uint32_t usart, int32_t value)
 {
 	int8_t i;
@@ -123,7 +130,10 @@ static void my_usart_print_int(uint32_t usart, int32_t value)
 	usart_send_blocking(usart, '\r');
 	usart_send_blocking(usart, '\n');
 }
-*/
+
+// +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  ++++++++++++++++++++
+
+
 #define GYR_RNW			(1 << 7) /* Write when zero */
 #define GYR_MNS			(1 << 6) /* Multiple reads when 1 */
 #define GYR_WHO_AM_I		0x0F
@@ -317,16 +327,33 @@ int main(void)
 		sprintf(gyr_z_str, "%d", (int)(gyr_z*0.00875F));
 		gfx_puts(gyr_z_str);
 		
-		// Indicador de batería
-		gfx_setTextSize(1);                  
-		gfx_setCursor(5, 310);
-		gfx_puts("Bateria: 100%");
+		
 
 		// Indicador de USART
 		gfx_setCursor(155, 310);
 		if (usart_encendido){ gfx_puts("USART:  ON"); }
 		else { gfx_puts("USART: OFF"); }
 		
+		// +++++++++++++++++++++++++++++++++++  BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
+		// gfx_setTextSize(1);                  
+		// gfx_setCursor(5, 310);
+		// gfx_puts("Bateria: 100%");
+		
+		// Alarma de batería
+		if(battery <= 7){
+			batt_alarm = 1;
+			gpio_set(GPIOG, GPIO14);
+		}
+		else{
+			batt_alarm = 0;
+			gpio_clear(GPIOG, GPIO14);
+		} 
+		
+		// ++++++++++++++++++++++++++++++++++ FIN BATERÍA ++++++++++++++++++++
+
+
+
+
 		lcd_show_frame();
-	}
+	} // fin del loop
 }

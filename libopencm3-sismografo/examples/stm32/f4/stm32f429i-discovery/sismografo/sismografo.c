@@ -28,7 +28,7 @@
 
 // Giroscopio
 #include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/usart.h>
+#include <libopencm3/stm32/usart.h> // Librería para el uso de USART
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/gpio.h>
 
@@ -74,24 +74,24 @@ static void spi_setup(void)
 	rcc_periph_clock_enable(RCC_GPIOG);
 	/* Set GPIO13 (in GPIO port G) to 'output push-pull'. */
 	gpio_mode_setup(GPIOG, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13 | GPIO14);
-// ++++++++++++++++++++++++++++++++++ FIN BATERÍA ++++++++++++++++++++
-
+// ++++++++++++++++++++++++++++++++++ FIN BATERÍA +++++++++++++++++++++++++++++++++++++++++++++
 
 }//fin del void set up
 
-// ++++++++++++++++++++++++++  COMUNICACIÓN USART +++++++++++++++
+
+// ++++++++++++++++++++++++++  COMUNICACIÓN USART +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void usart_setup(void)
 {
-	Enable clocks for GPIO port A (for GPIO_USART2_TX) and USART2. 
+    // Habilitar los clocks para el puerto GPIO A (para GPIO_USART2_TX) y USART2.
 	rcc_periph_clock_enable(RCC_USART2);
 	rcc_periph_clock_enable(RCC_GPIOA);
 
-	Setup GPIO pin GPIO_USART2_TX/GPIO9 on GPIO port A for transmit. 
-	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO2 | GPIO3);
+	// Configurar el pin GPIO_USART2_TX/GPIO9 en el puerto GPIO A para transmitir.
+    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO2 | GPIO3);
 	gpio_set_af(GPIOA, GPIO_AF7, GPIO2| GPIO3);
 
-	Setup UART parameters. */
+	// Configurar los parámetros de UART
 	usart_set_baudrate(USART2, 115200);
 	usart_set_databits(USART2, 8);
 	usart_set_stopbits(USART2, USART_STOPBITS_1);
@@ -99,10 +99,11 @@ static void usart_setup(void)
 	usart_set_parity(USART2, USART_PARITY_NONE);
 	usart_set_flow_control(USART2, USART_FLOWCONTROL_NONE);
 
-	 Finally enable the USART. 
+	// Finalmente, habilitar el USART.
 	usart_enable(USART2);
 }
 
+// Esta función se encarga de enviar un entero a través de USART. Utiliza la función usart_send_blocking() para enviar los caracteres uno por uno.
 static void my_usart_print_int(uint32_t usart, int32_t value)
 {
 	int8_t i;
@@ -110,28 +111,34 @@ static void my_usart_print_int(uint32_t usart, int32_t value)
 	char buffer[25];
 
 	if (value < 0) {
-		usart_send_blocking(usart, '-');
+        // Si el valor es negativo, enviar el signo '-' por el USART y hacer que el valor sea positivo.
+		usart_send_blocking(usart, '-'); // líneas envían caracteres a través de USART para imprimir un entero en formato decima
 		value = value * -1;
 	}
 
 	if (value == 0) {
+        // Si el valor es cero, enviar el carácter '0' por el USART.
 		usart_send_blocking(usart, '0');
 	}
 
 	while (value > 0) {
+        // Convertir el valor entero en una representación de caracteres decimal.
 		buffer[nr_digits++] = "0123456789"[value % 10];
 		value /= 10;
 	}
 
 	for (i = nr_digits-1; i >= 0; i--) {
+        // Enviar cada carácter del buffer por el USART en orden inverso para mantener el valor correcto.
 		usart_send_blocking(usart, buffer[i]);
 	}
 
-	usart_send_blocking(usart, '\r');
+    // Enviar un salto de línea ('\r') y un nueva línea ('\n') para mover el cursor al inicio de la siguiente línea después de imprimir el valor entero.
+	//  imprimir las coordenadas X, Y y Z
+    usart_send_blocking(usart, '\r');
 	usart_send_blocking(usart, '\n');
 }
 
-// +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  ++++++++++++++++++++
+// +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 #define GYR_RNW			(1 << 7) /* Write when zero */
@@ -165,7 +172,7 @@ int main(void)
 {
 
 	clock_setup();
-	console_setup(115200);
+	console_setup(115200); // Importante para el uso de USART
 
 	/******************************* Para uso del giroscopio*/
 	spi_setup();
@@ -201,7 +208,12 @@ int main(void)
 	//console_puts("LCD Initialized\n");
 	//console_puts("Should have a checker pattern, press any key to proceed\n");
 	//msleep(2000);
-/*	(void) console_getc(1); */
+
+    // +++++++++++++++++++++++++++++++++++  USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
+    /*Esta línea espera a recibir un carácter a través de USART. La función console_getc() bloquea la ejecución 
+    hasta que se recibe un carácter y luego lo devuelve.*/
+	(void) console_getc(1); 
+    // +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
 	gfx_init(lcd_draw_pixel, 240, 320);
 	gfx_fillScreen(LCD_GREY);
 	gfx_fillRoundRect(10, 10, 220, 220, 5, LCD_WHITE);
@@ -221,7 +233,10 @@ int main(void)
 	gfx_puts("B60425 Johander Anchia");
 	lcd_show_frame();
 	msleep(2000);
-/*	(void) console_getc(1); */
+
+    // +++++++++++++++++++++++++++++++++++  USART +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	(void) console_getc(1); 
+    // +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	while (1) {
 		gfx_setTextColor(LCD_YELLOW, LCD_BLACK);
@@ -330,9 +345,9 @@ int main(void)
 		
 
 		// Indicador de USART
-		gfx_setCursor(155, 310);
-		if (usart_encendido){ gfx_puts("USART:  ON"); }
-		else { gfx_puts("USART: OFF"); }
+		// gfx_setCursor(155, 310);
+		// if (usart_encendido){ gfx_puts("USART:  ON"); }
+		// else { gfx_puts("USART: OFF"); }
 		
 		// +++++++++++++++++++++++++++++++++++  BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
 		// gfx_setTextSize(1);                  

@@ -32,8 +32,7 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/gpio.h>
 
-// Biblioteca ADC
-#include <libopencm3/stm32/adc.h>
+
 
 // +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
 // // Declaración de variables globales relacionadas con la batería
@@ -78,11 +77,12 @@ static void spi_setup(void)
 	spi_enable(SPI5);
 
 // +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
-// Activo los pines necesarios, puertos G, 13 y 14
-	/* Enable GPIOG clock. */
+	// Activo los pines necesarios, puertos G, 13 y 14
+	/* Habilitar el reloj de GPIOG. */
 	rcc_periph_clock_enable(RCC_GPIOG);
-	/* Set GPIO13 (in GPIO port G) to 'output push-pull'. */
+	/* Configurar GPIO13 (en el puerto GPIOG) como 'salida push-pull'. */
 	gpio_mode_setup(GPIOG, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13 | GPIO14);
+
 // ++++++++++++++++++++++++++++++++++ FIN BATERÍA +++++++++++++++++++++++++++++++++++++++++++++
 
 }//fin del void set up
@@ -150,8 +150,9 @@ static void my_usart_print_int(uint32_t usart, int32_t value)
 // +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-// +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
+// ++++++++++++++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
 // Configuración del ADC (Convertidor Analógico-Digital)
+
 static void adc_setup(void)
 {
 	rcc_periph_clock_enable(RCC_ADC1);  // Habilitar el reloj del ADC
@@ -181,11 +182,76 @@ static uint16_t read_adc_naiive(uint8_t channel)
 void adc_update(void){
 	battery = read_adc_naiive(1)*9/4095; // Actualización de la medición de la batería
                                             // Realizar una operación de escala y ajuste para convertir el valor del ADC en un voltaje aproximado de la batería
+/* La multiplicación por 9 se utiliza para ajustar el rango del ADC a un rango de 
+voltaje apropiado de la batería. El valor 4095 en el denominador representa el valor 
+máximo que se puede obtener del ADC (generalmente el rango de valores del ADC es de 0 a 4095). 
+Dividir por 4095 normaliza el valor del ADC al rango de 0 a 1.*/
 }
 
 // En el código principal (main), se llama a la función adc_setup para configurar el ADC antes de iniciar el bucle principal
 // Luego, dentro del bucle principal, se llama a adc_update para actualizar periódicamente la medición de la batería
 // El valor de la batería se utiliza posteriormente en la interfaz de usuario en la pantalla LCD para mostrar el nivel de batería.
+
+static void button_setup(void)
+{
+	/* Enable GPIOA clock. */
+	rcc_periph_clock_enable(RCC_GPIOA);
+
+	/* Set GPIO0 (in GPIO port A) to 'input open-drain'. */
+	gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO0);
+	gpio_mode_setup(GPIOG, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13 | GPIO14);
+}
+
+
+int print_decimal(int num);
+
+/*
+ * int len = print_decimal(int value)
+ *
+ * Rutina muy simple para imprimir un entero como un número decimal
+ * en la consola.
+ */
+int
+print_decimal(int num)
+{
+	int		ndx = 0;     // Índice para el arreglo buf
+	char	buf[10];     // Arreglo para almacenar los dígitos del número
+	int		len = 0;     // Longitud de la cadena impresa
+	char	is_signed = 0;     // Indica si el número es negativo
+	
+	if (com_en) {     // Verifica si la comunicación está habilitada
+		if (num < 0) {     // Si el número es negativo
+			is_signed++;     // Marca la variable is_signed como verdadera
+			num = 0 - num;     // Convierte el número a su valor absoluto
+		}
+		buf[ndx++] = '\000';     // Caracter de terminación de cadena
+		do {
+			buf[ndx++] = (num % 10) + '0';     // Obtiene el dígito menos significativo y lo almacena en el arreglo buf
+			num = num / 10;     // Divide el número por 10 para obtener el siguiente dígito
+		} while (num != 0);     // Repite hasta que el número se convierta en cero
+		ndx--;     // Ajusta el índice para apuntar al último dígito almacenado
+		
+		if (is_signed != 0) {     // Si el número es negativo
+			console_putc('-');     // Imprime el signo negativo en la consola
+			len++;     // Incrementa la longitud de la cadena impresa
+		}
+		
+		while (buf[ndx] != '\000') {     // Recorre el arreglo buf en orden inverso
+			console_putc(buf[ndx--]);     // Imprime cada dígito en la consola
+			len++;     // Incrementa la longitud de la cadena impresa
+		}
+		
+		gpio_toggle(GPIOG, GPIO13);     // Conmuta el estado del pin GPIOG 13
+		
+	} else {
+		len = 0;     // La comunicación no está habilitada, establece la longitud en cero
+		gpio_clear(GPIOG, GPIO13);     // Desactiva el pin GPIOG 13
+	}
+	
+	return len;     // Devuelve la longitud de la cadena impresa
+}
+
+}
 // ++++++++++++++++++++++++++++++++++ FIN BATERÍA +++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -398,10 +464,16 @@ int main(void)
 		// if (usart_encendido){ gfx_puts("USART:  ON"); }
 		// else { gfx_puts("USART: OFF"); }
 		
-		// +++++++++++++++++++++++++++++++++++  BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
+		// ++++++++++++++++++++++++++++++++++++++++++++++  BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// gfx_setTextSize(1);                  
 		// gfx_setCursor(5, 310);
 		// gfx_puts("Bateria: 100%");
+
+		// Formatear el valor de la variable 'battery' como una cadena de caracteres y almacenarlo en 'int_to_str'
+		sprintf(int_to_str, "%d", battery);
+
+		gfx_setCursor(15, 198);
+		gfx_puts("Batt: ");
 		
 		// Alarma de batería
 		if(battery <= 7){
@@ -413,7 +485,26 @@ int main(void)
 			gpio_clear(GPIOG, GPIO14);
 		} 
 		
-		// ++++++++++++++++++++++++++++++++++ FIN BATERÍA ++++++++++++++++++++
+		// Imprimir el valor de 'batt_alarm' en formato decimal, seguido de una tabulación
+		print_decimal(batt_alarm); console_puts("\t");
+		// Imprimir el valor de 'battery' en formato decimal, seguido de un salto de línea
+		print_decimal(battery); console_puts("\n");
+
+		if (gpio_get(GPIOA, GPIO0)) {
+    // Verificar si el botón está presionado (estado alto)
+
+    if(com_en){
+        // Si la comunicación está habilitada
+        com_en = 0; // Desactivar la comunicación
+    }//fin if
+    else{
+        // Si la comunicación está deshabilitada
+        com_en = 1; // Activar la comunicación
+    }
+	}//fin if
+
+
+		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ FIN BATERÍA ++++++++++++++++++++++++++++++++++++++
 
 
 

@@ -32,7 +32,8 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/gpio.h>
 
-
+// Biblioteca ADC
+#include <libopencm3/stm32/adc.h>
 
 // +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
 // // Declaración de variables globales relacionadas con la batería

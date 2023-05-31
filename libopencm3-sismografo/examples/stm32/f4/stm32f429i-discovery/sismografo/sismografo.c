@@ -32,8 +32,16 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/gpio.h>
 
-/* CODIGO PARA GIROSCOPIO */
 
+
+// +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
+// // Declaración de variables globales relacionadas con la batería
+uint16_t battery; // Almacena el valor de la medición de la batería
+uint8_t batt_alarm; // Utilizada para indicar una alarma de batería
+// ++++++++++++++++++++++++++++++++++ FIN BATERÍA +++++++++++++++++++++++++++++++++++++++++++++
+
+
+/* CODIGO PARA GIROSCOPIO */
 static void spi_setup(void)
 {
 	rcc_periph_clock_enable(RCC_SPI5);
@@ -68,7 +76,7 @@ static void spi_setup(void)
 	SPI_I2SCFGR(SPI5) &= ~SPI_I2SCFGR_I2SMOD;
 	spi_enable(SPI5);
 
-// +++++++++++++++++++++++++++++++++ BATERÍA +++++++++++++++++++++
+// +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
 // Activo los pines necesarios, puertos G, 13 y 14
 	/* Enable GPIOG clock. */
 	rcc_periph_clock_enable(RCC_GPIOG);
@@ -139,6 +147,46 @@ static void my_usart_print_int(uint32_t usart, int32_t value)
 }
 
 // +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+// +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
+// Configuración del ADC (Convertidor Analógico-Digital)
+static void adc_setup(void)
+{
+	rcc_periph_clock_enable(RCC_ADC1);  // Habilitar el reloj del ADC
+  	rcc_periph_clock_enable(RCC_GPIOA); // Habilitar el reloj del puerto GPIOA
+	gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO1); // Configurar el pin GPIOA1 como entrada analógica
+
+	adc_power_off(ADC1); // Apagar el ADC antes de la configuración
+  	adc_disable_scan_mode(ADC1); // Deshabilitar el modo de escaneo del ADC
+  	adc_set_sample_time_on_all_channels(ADC1, ADC_SMPR_SMP_3CYC); // Establecer el tiempo de muestreo para todas las entradas del ADC
+
+	adc_power_on(ADC1);  // Encender el ADC después de la configuración
+}
+
+// Lectura del ADC para medir la batería
+static uint16_t read_adc_naiive(uint8_t channel)
+{
+	uint8_t channel_array[16];
+	channel_array[0] = channel;
+	adc_set_regular_sequence(ADC1, 1, channel_array);  // Configurar una secuencia regular de conversión con un solo canal
+	adc_start_conversion_regular(ADC1); // Iniciar la conversión
+	while (!adc_eoc(ADC1)); // Esperar a que la conversión termine
+	uint16_t reg16 = adc_read_regular(ADC1); // Leer el valor convertido del registro regular del ADC
+	return reg16;
+}
+
+// Actualización de la medición de la batería
+void adc_update(void){
+	battery = read_adc_naiive(1)*9/4095; // Actualización de la medición de la batería
+                                            // Realizar una operación de escala y ajuste para convertir el valor del ADC en un voltaje aproximado de la batería
+}
+
+// En el código principal (main), se llama a la función adc_setup para configurar el ADC antes de iniciar el bucle principal
+// Luego, dentro del bucle principal, se llama a adc_update para actualizar periódicamente la medición de la batería
+// El valor de la batería se utiliza posteriormente en la interfaz de usuario en la pantalla LCD para mostrar el nivel de batería.
+// ++++++++++++++++++++++++++++++++++ FIN BATERÍA +++++++++++++++++++++++++++++++++++++++++++++
+
 
 
 #define GYR_RNW			(1 << 7) /* Write when zero */

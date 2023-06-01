@@ -32,6 +32,8 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/gpio.h>
 
+// Para ADC
+#include <libopencm3/stm32/adc.h>
 
 
 // +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++

@@ -196,18 +196,14 @@ static uint16_t read_adc_naiive(uint8_t channel)
 	return reg16;
 }//fin de la función de lectura del ADC
 
-	
-                                            
 
-
-static void button_setup(void)
+static void boton_setup(void)
 {
 	/* Enable GPIOA clock. */
 	rcc_periph_clock_enable(RCC_GPIOA);
 
 	/* Set GPIO0 (in GPIO port A) to 'input open-drain'. */
 	gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO0);
-	gpio_mode_setup(GPIOG, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13 | GPIO14);
 }
 
 
@@ -228,6 +224,7 @@ int main(void)
 	bateria_setup();
 	adc_setup();
 	usart_setup();
+	boton_setup();
 
 	uint8_t temp;
 	int16_t gyr_x = 0;
@@ -235,6 +232,8 @@ int main(void)
 	int16_t gyr_z = 0;
 
 	uint8_t usart_encendido = 0;
+	uint8_t boton_presionado = 0;
+	int delay_bateria = 0;
 
 
 	gpio_clear(GPIOC, GPIO1);
@@ -415,30 +414,20 @@ int main(void)
 		gfx_puts(bateria_str);
 		
 		// Alarma de batería
-		if(bateria <= 7){
-			bateria_baja = 1;
+		if(bateria <= 7){ 
+			bateria_baja = 1; 
 			gpio_set(GPIOG, GPIO14);
-		}
-		else{
+		} else {
 			bateria_baja = 0;
 			gpio_clear(GPIOG, GPIO14);
 		}
-
-/*
-		if (gpio_get(GPIOA, GPIO0)) {
-    // Verificar si el botón está presionado (estado alto)
-    	if(com_en){
-        	// Si la comunicación está habilitada
-        	com_en = 0; // Desactivar la comunicación
-    	}//fin if
-    		else{
-        		// Si la comunicación está deshabilitada
-        		com_en = 1; // Activar la comunicación
-    		}
-		}//fin if
-*/	
+			
+		
+		
 
 		// Indicador de USART
+		boton_presionado = gpio_get(GPIOA, GPIO0); 
+		if (boton_presionado){ usart_encendido = !usart_encendido; msleep(150);}
 		gfx_setCursor(155, 310);
 		if (usart_encendido){ gfx_puts("USART:  ON"); }
 		else { gfx_puts("USART: OFF"); }

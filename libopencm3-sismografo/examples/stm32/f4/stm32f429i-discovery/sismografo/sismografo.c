@@ -36,16 +36,12 @@
 #include <libopencm3/stm32/adc.h>
 
 
-// +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
-// // Declaración de variables globales relacionadas con la batería
-uint16_t battery; // Almacena el valor de la medición de la batería
-uint8_t batt_alarm; // Utilizada para indicar una alarma de batería
-// ++++++++++++++++++++++++++++++++++ FIN BATERÍA +++++++++++++++++++++++++++++++++++++++++++++
+/**************
+ * FUNCIONES
+ **************/ 
 
 
-/* CODIGO PARA GIROSCOPIO */
-static void spi_setup(void)
-{
+static void spi_setup(void){
 	rcc_periph_clock_enable(RCC_SPI5);
 	/* For spi signal pins */
 	rcc_periph_clock_enable(RCC_GPIOC);
@@ -55,7 +51,7 @@ static void spi_setup(void)
 	gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO1);
 	/* Start with spi communication disabled */
 	gpio_set(GPIOC, GPIO1);
-//
+
 
 	/* Setup GPIO pins for AF5 for SPI5 signals. */
 	gpio_mode_setup(GPIOF, GPIO_MODE_AF, GPIO_PUPD_NONE,
@@ -69,28 +65,25 @@ static void spi_setup(void)
 	spi_set_clock_phase_0(SPI5);
 	spi_set_full_duplex_mode(SPI5);
 	spi_set_unidirectional_mode(SPI5); /* bidirectional but in 3-wire */
-	//spi_set_data_size(SPI5, SPI_CR2_DS_8BIT);
 	spi_enable_software_slave_management(SPI5);
 	spi_send_msb_first(SPI5);
 	spi_set_nss_high(SPI5);
-	//spi_enable_ss_output(SPI1);
-	//spi_fifo_reception_threshold_8bit(SPI5);
 	SPI_I2SCFGR(SPI5) &= ~SPI_I2SCFGR_I2SMOD;
 	spi_enable(SPI5);
 
-// +++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
-	// Activo los pines necesarios, puertos G, 13 y 14
+}//fin del setup del spi
+
+
+static void battery_setup(void){
+	// Configuración de la batería
+	// Activo los pines necesarios, puerto G, pines 13 y 14
+
 	/* Habilitar el reloj de GPIOG. */
 	rcc_periph_clock_enable(RCC_GPIOG);
 	/* Configurar GPIO13 (en el puerto GPIOG) como 'salida push-pull'. */
 	gpio_mode_setup(GPIOG, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13 | GPIO14);
+}//fin del setup de batería
 
-// ++++++++++++++++++++++++++++++++++ FIN BATERÍA +++++++++++++++++++++++++++++++++++++++++++++
-
-}//fin del void set up
-
-
-// ++++++++++++++++++++++++++  COMUNICACIÓN USART +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void usart_setup(void)
 {
@@ -112,9 +105,11 @@ static void usart_setup(void)
 
 	// Finalmente, habilitar el USART.
 	usart_enable(USART2);
-}
+}//fin del setup de USART
 
-// Esta función se encarga de enviar un entero a través de USART. Utiliza la función usart_send_blocking() para enviar los caracteres uno por uno.
+
+// Esta función se encarga de enviar un entero a través de USART
+//Utiliza la función usart_send_blocking() para enviar los caracteres uno por uno.
 static void my_usart_print_int(uint32_t usart, int32_t value)
 {
 	int8_t i;
@@ -147,16 +142,13 @@ static void my_usart_print_int(uint32_t usart, int32_t value)
 	//  imprimir las coordenadas X, Y y Z
     usart_send_blocking(usart, '\r');
 	usart_send_blocking(usart, '\n');
-}
+}//fin de la función de envío de enteros por USART
 
-// +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-// ++++++++++++++++++++++++++++++++++++++++++++ BATERÍA ++++++++++++++++++++++++++++++++++++++++++++++
-// Configuración del ADC (Convertidor Analógico-Digital)
 
 static void adc_setup(void)
 {
+	// Configuración del ADC (Convertidor Analógico-Digital)
+	// Este se utiliza en la funcionalidad relacionada con la batería
 	rcc_periph_clock_enable(RCC_ADC1);  // Habilitar el reloj del ADC
   	rcc_periph_clock_enable(RCC_GPIOA); // Habilitar el reloj del puerto GPIOA
 	gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO1); // Configurar el pin GPIOA1 como entrada analógica
@@ -166,11 +158,12 @@ static void adc_setup(void)
   	adc_set_sample_time_on_all_channels(ADC1, ADC_SMPR_SMP_3CYC); // Establecer el tiempo de muestreo para todas las entradas del ADC
 
 	adc_power_on(ADC1);  // Encender el ADC después de la configuración
-}
+}//fin del setup del ADC
 
-// Lectura del ADC para medir la batería
+
 static uint16_t read_adc_naiive(uint8_t channel)
 {
+	// Lectura del ADC para medir la batería
 	uint8_t channel_array[16];
 	channel_array[0] = channel;
 	adc_set_regular_sequence(ADC1, 1, channel_array);  // Configurar una secuencia regular de conversión con un solo canal
@@ -178,16 +171,17 @@ static uint16_t read_adc_naiive(uint8_t channel)
 	while (!adc_eoc(ADC1)); // Esperar a que la conversión termine
 	uint16_t reg16 = adc_read_regular(ADC1); // Leer el valor convertido del registro regular del ADC
 	return reg16;
-}
+}//fin de la función de lectura del ADC
 
 // Actualización de la medición de la batería
 void adc_update(void){
+	/* Se escala y ajusta para convertir el valor del ADC en un voltaje aproximado de la batería
+	La multiplicación por 9 se utiliza para ajustar el rango del ADC a un rango de 
+	voltaje apropiado de la batería. El valor 4095 en el denominador representa el valor 
+	máximo que se puede obtener del ADC debido a que se trata de uno de 12 bits (2^12 = 4096). 
+	Dividir por 4095 normaliza el valor del ADC al rango de 0 a 1.*/
+                                            
 	battery = read_adc_naiive(1)*9/4095; // Actualización de la medición de la batería
-                                            // Realizar una operación de escala y ajuste para convertir el valor del ADC en un voltaje aproximado de la batería
-/* La multiplicación por 9 se utiliza para ajustar el rango del ADC a un rango de 
-voltaje apropiado de la batería. El valor 4095 en el denominador representa el valor 
-máximo que se puede obtener del ADC (generalmente el rango de valores del ADC es de 0 a 4095). 
-Dividir por 4095 normaliza el valor del ADC al rango de 0 a 1.*/
 }
 
 // En el código principal (main), se llama a la función adc_setup para configurar el ADC antes de iniciar el bucle principal
@@ -287,12 +281,16 @@ print_decimal(int num)
  */
 int main(void)
 {
+	// Declaración de variables globales relacionadas con la batería
+	uint16_t battery; // Almacena el valor de la medición de la batería
+	uint8_t batt_alarm; // Utilizada para indicar una alarma de batería
 
 	clock_setup();
 	console_setup(115200); // Importante para el uso de USART
 
 	/******************************* Para uso del giroscopio*/
 	spi_setup();
+	battery_setup();
 	uint8_t temp;
 	int16_t gyr_x = 0;
 	int16_t gyr_y = 0;

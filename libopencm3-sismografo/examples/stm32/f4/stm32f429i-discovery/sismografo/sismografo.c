@@ -110,24 +110,24 @@ static void bateria_setup(void){
 
 static void usart_setup(void)
 {
-    // Habilitar los clocks para el puerto GPIO A (para GPIO_USART2_TX) y USART2.
-	rcc_periph_clock_enable(RCC_USART2);
+    // Habilitar los clocks para el puerto GPIO A (para GPIO_USART1_TX) y USART1.
+	rcc_periph_clock_enable(RCC_USART1);
 	rcc_periph_clock_enable(RCC_GPIOA);
 
-	// Configurar el pin GPIO_USART2_TX/GPIO9 en el puerto GPIO A para transmitir.
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO2 | GPIO3);
-	gpio_set_af(GPIOA, GPIO_AF7, GPIO2| GPIO3);
+	// Configurar el pin GPIO_USART1_TX/GPIO9 en el puerto GPIO A para transmitir.
+	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9);
+	gpio_set_af(GPIOA, GPIO_AF7, GPIO9);
 
 	// Configurar los parámetros de UART
-	usart_set_baudrate(USART2, 115200);
-	usart_set_databits(USART2, 8);
-	usart_set_stopbits(USART2, USART_STOPBITS_1);
-	usart_set_mode(USART2, USART_MODE_TX_RX);
-	usart_set_parity(USART2, USART_PARITY_NONE);
-	usart_set_flow_control(USART2, USART_FLOWCONTROL_NONE);
+	usart_set_baudrate(USART1, 115200);
+	usart_set_databits(USART1, 8);
+	usart_set_stopbits(USART1, USART_STOPBITS_1);
+	usart_set_mode(USART1, USART_MODE_TX);
+	usart_set_parity(USART1, USART_PARITY_NONE);
+	usart_set_flow_control(USART1, USART_FLOWCONTROL_NONE);
 
 	// Finalmente, habilitar el USART.
-	usart_enable(USART2);
+	usart_enable(USART1);
 }//fin del setup de USART
 
 
@@ -300,12 +300,13 @@ int main(void)
 		gfx_fillCircle(200, 120, 20+gyr_z*(0.00875F), LCD_YELLOW);
 
 		/*******************************************************************/
+		/*
 		gpio_clear(GPIOC, GPIO1);
 		spi_send(SPI5, GYR_WHO_AM_I | GYR_RNW);
 		spi_read(SPI5);
 		spi_send(SPI5, 0);
 		temp=spi_read(SPI5);
-//		my_usart_print_int(USART2, (temp));
+		my_usart_print_int(USART1, (temp));
 		gpio_set(GPIOC, GPIO1);
 
 		gpio_clear(GPIOC, GPIO1);
@@ -313,7 +314,7 @@ int main(void)
 		spi_read(SPI5);
 		spi_send(SPI5, 0);
 		temp=spi_read(SPI5);
-//		my_usart_print_int(USART2, (temp));
+		my_usart_print_int(USART1, (temp));
 		gpio_set(GPIOC, GPIO1);
 
 		gpio_clear(GPIOC, GPIO1);
@@ -321,9 +322,9 @@ int main(void)
 		spi_read(SPI5);
 		spi_send(SPI5, 0);
 		temp=spi_read(SPI5);
-//		my_usart_print_int(USART2, (temp));
+		my_usart_print_int(USART1, (temp));
 		gpio_set(GPIOC, GPIO1);
-
+		*/
 		gpio_clear(GPIOC, GPIO1);
 		spi_send(SPI5, GYR_OUT_X_L | GYR_RNW);
 		spi_read(SPI5);
@@ -336,7 +337,6 @@ int main(void)
 		spi_read(SPI5);
 		spi_send(SPI5, 0);
 		gyr_x|=spi_read(SPI5) << 8;
-//		my_usart_print_int(USART2, (gyr_x));
 		gpio_set(GPIOC, GPIO1);
 
 		gpio_clear(GPIOC, GPIO1);
@@ -351,7 +351,6 @@ int main(void)
 		spi_read(SPI5);
 		spi_send(SPI5, 0);
 		gyr_y|=spi_read(SPI5) << 8;
-//		my_usart_print_int(USART2, (gyr_y));
 		gpio_set(GPIOC, GPIO1);
 
 		gpio_clear(GPIOC, GPIO1);
@@ -366,8 +365,25 @@ int main(void)
 		spi_read(SPI5);
 		spi_send(SPI5, 0);
 		gyr_z|=spi_read(SPI5) << 8;
-//		my_usart_print_int(USART2, (gyr_z));
 		gpio_set(GPIOC, GPIO1);
+
+
+		// Sección de USART
+		boton_presionado = gpio_get(GPIOA, GPIO0); 
+		if (boton_presionado){ usart_encendido = !usart_encendido; msleep(150);}
+		gfx_setTextSize(1);  
+		gfx_setCursor(155, 310);
+		if (usart_encendido){ 
+			gfx_puts("USART:  ON"); 
+			my_usart_print_int(USART1, (gyr_x));
+			my_usart_print_int(USART1, (gyr_y));
+			my_usart_print_int(USART1, (gyr_z));
+
+		}
+		else { gfx_puts("USART: OFF"); }
+		
+
+
 		/************************************************************/
 
 		// Indicador de giroscopio
@@ -425,13 +441,7 @@ int main(void)
 		
 		
 
-		// Indicador de USART
-		boton_presionado = gpio_get(GPIOA, GPIO0); 
-		if (boton_presionado){ usart_encendido = !usart_encendido; msleep(150);}
-		gfx_setCursor(155, 310);
-		if (usart_encendido){ gfx_puts("USART:  ON"); }
-		else { gfx_puts("USART: OFF"); }
-		
+
 		lcd_show_frame();
 	} // fin del loop
 }

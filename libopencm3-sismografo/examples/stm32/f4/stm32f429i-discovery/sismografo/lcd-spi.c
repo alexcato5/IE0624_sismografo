@@ -31,10 +31,6 @@
 #include "lcd-spi.h"
 
 
-/* forward prototypes for some helper functions */
-static int print_decimal(int v);
-static int print_hex(int v);
-
 /* Simple double buffering, one frame is displayed, the
  * other being built.
  */
@@ -194,14 +190,14 @@ initialize_display(const struct tft_command cmds[])
 {
 	int i = 0;
 	int arg_offset = 0;
+	/* Initially arg offset is zero, so each time we 'consume'
 	int j;
 
-	/* Initially arg offset is zero, so each time we 'consume'
 	 * a few bytes in the args array the offset is moved and
 	 * that changes the pointer we send to the command function.
 	 */
 	while (cmds[i].cmd) {
-		console_puts("CMD: ");
+	/*	console_puts("CMD: ");
 		print_hex(cmds[i].cmd);
 		console_puts(", ");
 		if (cmds[i].n_args) {
@@ -211,16 +207,17 @@ initialize_display(const struct tft_command cmds[])
 				console_puts(", ");
 			}
 		}
-		console_puts("DELAY: ");
+		//console_puts("DELAY: ");
 		print_decimal(cmds[i].delay);
-		console_puts("ms\n");
+		//console_puts("ms\n");
 
+	 */
 		lcd_command(cmds[i].cmd, cmds[i].delay, cmds[i].n_args,
 			&cmd_args[arg_offset]);
 		arg_offset += cmds[i].n_args;
 		i++;
 	}
-	console_puts("Done.\n");
+	//console_puts("Done.\n");
 }
 
 /* prototype for test_image */
@@ -335,76 +332,14 @@ lcd_spi_init(void)
 	spi_enable(LCD_SPI);
 
 	/* Set up the display */
-	console_puts("Initialize the display.\n");
+	//console_puts("Initialize the display.\n");
 	initialize_display(initialization);
 
 	/* create a test image */
-	console_puts("Generating Test Image\n");
+	//console_puts("Generating Test Image\n");
 	test_image();
 
 	/* display it on the LCD */
-	console_puts("And ... voila\n");
+	//console_puts("And ... voila\n");
 	lcd_show_frame();
-}
-
-/*
- * int len = print_decimal(int value)
- *
- * Very simple routine to print an integer as a decimal
- * number on the console.
- */
-int
-print_decimal(int num)
-{
-	int	ndx = 0;
-	char	buf[10];
-	int	len = 0;
-	char	is_signed = 0;
-
-	if (num < 0) {
-		is_signed++;
-		num = 0 - num;
-	}
-	buf[ndx++] = '\000';
-	do {
-		buf[ndx++] = (num % 10) + '0';
-		num = num / 10;
-	} while (num != 0);
-	ndx--;
-	if (is_signed != 0) {
-		console_putc('-');
-		len++;
-	}
-	while (buf[ndx] != '\000') {
-		console_putc(buf[ndx--]);
-		len++;
-	}
-	return len; /* number of characters printed */
-}
-
-/*
- * int print_hex(int value)
- *
- * Very simple routine for printing out hex constants.
- */
-static int print_hex(int v)
-{
-	int		ndx = 0;
-	char	buf[10];
-	int		len;
-
-	buf[ndx++] = '\000';
-	do {
-		char	c = v & 0xf;
-		buf[ndx++] = (c > 9) ? '7' + c : '0' + c;
-		v = (v >> 4) & 0x0fffffff;
-	} while (v != 0);
-	ndx--;
-	console_puts("0x");
-	len = 2;
-	while (buf[ndx] != '\000') {
-		console_putc(buf[ndx--]);
-		len++;
-	}
-	return len; /* number of characters printed */
 }

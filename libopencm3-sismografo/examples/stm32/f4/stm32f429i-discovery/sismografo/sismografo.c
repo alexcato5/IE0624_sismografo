@@ -97,13 +97,13 @@ static void spi_setup(void){
 }//fin del setup del spi
 
 
-static void bateria_setup(void){
-	// Configuración de la batería
+static void led_bateria_setup(void){
+	// Configuración del led indicador de batería baja
 	// Activo los pines necesarios, puerto G, pines 13 y 14
 
 	/* Habilitar el reloj de GPIOG. */
 	rcc_periph_clock_enable(RCC_GPIOG);
-	/* Configurar GPIO13 (en el puerto GPIOG) como 'salida push-pull'. */
+	/* Configurar GPIO13 y GPIO14 (en el puerto GPIOG) como 'salida push-pull'. */
 	gpio_mode_setup(GPIOG, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13 | GPIO14);
 }//fin del setup de batería
 
@@ -161,11 +161,10 @@ static void my_usart_print_int(uint32_t usart, int32_t value)
 		usart_send_blocking(usart, buffer[i]);
 	}
 
-    // Enviar un salto de línea ('\r') y un nueva línea ('\n') para mover el cursor al inicio de la siguiente línea después de imprimir el valor entero.
-	//  imprimir las coordenadas X, Y y Z
-    usart_send_blocking(usart, '\r');
-	usart_send_blocking(usart, '\n');
-}//fin de la función de envío de enteros por USART
+    // Enviar un caracter específico que indique el fin del valor por enviar
+    // En este caso, se eligió '.'
+    usart_send_blocking(usart, '.');
+	}//fin de la función de envío de enteros por USART
 
 
 static void adc_setup(void)
@@ -221,7 +220,7 @@ int main(void)
 	clock_setup();
 	console_setup(115200); // Importante para el uso de USART
 	spi_setup();
-	bateria_setup();
+	led_bateria_setup();
 	adc_setup();
 	usart_setup();
 	boton_setup();
@@ -368,20 +367,6 @@ int main(void)
 		gpio_set(GPIOC, GPIO1);
 
 
-		// Sección de USART
-		boton_presionado = gpio_get(GPIOA, GPIO0); 
-		if (boton_presionado){ usart_encendido = !usart_encendido; msleep(150);}
-		gfx_setTextSize(1);  
-		gfx_setCursor(155, 310);
-		if (usart_encendido){ 
-			gfx_puts("USART:  ON"); 
-			my_usart_print_int(USART1, (gyr_x));
-			my_usart_print_int(USART1, (gyr_y));
-			my_usart_print_int(USART1, (gyr_z));
-
-		}
-		else { gfx_puts("USART: OFF"); }
-		
 
 
 		/************************************************************/
@@ -438,10 +423,20 @@ int main(void)
 			gpio_clear(GPIOG, GPIO14);
 		}
 			
-		
-		
+		// Sección de USART
+		boton_presionado = gpio_get(GPIOA, GPIO0); 
+		if (boton_presionado){ usart_encendido = !usart_encendido; msleep(150);}
+		gfx_setTextSize(1);  
+		gfx_setCursor(155, 310);
+		if (usart_encendido){ 
+			gfx_puts("USART:  ON"); 
+			my_usart_print_int(USART1, (int)(gyr_x*0.00875F));
+			my_usart_print_int(USART1, (int)(gyr_y*0.00875F));
+			my_usart_print_int(USART1, (int)(gyr_z*0.00875F));
+			my_usart_print_int(USART1, bateria_baja);
 
-
+		}
+		else { gfx_puts("USART: OFF"); }
 		lcd_show_frame();
 	} // fin del loop
 }

@@ -49,7 +49,7 @@ ruta_resultados = './' + nombre_archivo + '/'
 Path(ruta_resultados).mkdir(parents=True, exist_ok=True)
 
 # Definición del DataFrame para guardar los resultados
-formato = { 'X':[0], 'Y':[0], 'Z':[0], 'Batería baja':[0] }
+formato = { 'X':[0], 'Y':[0], 'Z':[0],'Porcentaje de batería':[0], 'Batería baja':[0] }
 resultados_df = pd.DataFrame(formato)
 
 lectura = [] # Lista donde se guarda el número leído
@@ -66,7 +66,7 @@ while True:
 		escritura.append(float(''.join(lectura)))
 		lectura.clear()
 
-	if len(escritura) == 3:
+	if len(escritura) == 4:
 		caracter_leido = puerto.read()
 		caracter_leido = caracter_leido.decode('utf-8')
 		if caracter_leido == '1':
@@ -84,7 +84,8 @@ while True:
   			"Eje X": escritura[0],
   			"Eje Y": escritura[1],
   			"Eje Z": escritura[2],
-  			"Bateria baja": escritura[3] 
+  			"Nivel de bateria": escritura[3],
+  			"Bateria baja": escritura[4] 
 		}
 		escritura.clear()
 		print(json.dumps(diccionario, indent = 4))

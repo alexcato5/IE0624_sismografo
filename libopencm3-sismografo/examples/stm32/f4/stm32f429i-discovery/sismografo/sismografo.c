@@ -59,6 +59,11 @@
 #define GYR_OUT_Z_L		0x2C
 #define GYR_OUT_Z_H		0x2D
 
+// Valores de offset definidos de acuerdo con la observación 
+// del funcionamiento del sistema
+#define X_OFFSET		2
+#define Y_OFFSET		-10
+#define Z_OFFSET		8
 
 /**************
  * FUNCIONES
@@ -225,14 +230,12 @@ int main(void)
 	usart_setup();
 	boton_setup();
 
-	uint8_t temp;
 	int16_t gyr_x = 0;
 	int16_t gyr_y = 0;
 	int16_t gyr_z = 0;
 
 	uint8_t usart_encendido = 0;
 	uint8_t boton_presionado = 0;
-	int delay_bateria = 0;
 
 
 	gpio_clear(GPIOC, GPIO1);
@@ -253,17 +256,7 @@ int main(void)
 
 	sdram_init();
 	lcd_spi_init();
-	/***************************************************************/
-
-	//console_puts("LCD Initialized\n");
-	//console_puts("Should have a checker pattern, press any key to proceed\n");
-	//msleep(2000);
-
-    // +++++++++++++++++++++++++++++++++++  USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
-    /*Esta línea espera a recibir un carácter a través de USART. La función console_getc() bloquea la ejecución 
-    hasta que se recibe un carácter y luego lo devuelve.*/
-	//(void) console_getc(1); 
-    // +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
+	
 	gfx_init(lcd_draw_pixel, 240, 320);
 	gfx_fillScreen(LCD_GREY);
 	gfx_fillRoundRect(10, 10, 220, 220, 5, LCD_WHITE);
@@ -284,19 +277,15 @@ int main(void)
 	lcd_show_frame();
 	msleep(2000);
 
-    // +++++++++++++++++++++++++++++++++++  USART +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	//(void) console_getc(1); 
-    // +++++++++++++++++++++++++++++++++++  FIN COMUNICACIÓN USART  +++++++++++++++++++++++++++++++++++++++++++++++++++
-
 	while (1) {
 		gfx_setTextColor(LCD_YELLOW, LCD_BLACK);
 		gfx_setTextSize(2);
 		gfx_fillScreen(LCD_BLACK);
 		gfx_setCursor(15, 36);
 		gfx_puts("- SISMOGRAFO -");
-		gfx_fillCircle(40, 120, 20+gyr_x*(0.00875F), LCD_WHITE);
-		gfx_fillCircle(120, 120, 20+gyr_y*(0.00875F), LCD_GREY);
-		gfx_fillCircle(200, 120, 20+gyr_z*(0.00875F), LCD_YELLOW);
+		gfx_fillCircle(40, 120, 20+gyr_x*(0.00875F)+X_OFFSET, LCD_WHITE);
+		gfx_fillCircle(120, 120, 20+gyr_y*(0.00875F)+Y_OFFSET, LCD_GREY);
+		gfx_fillCircle(200, 120, 20+gyr_z*(0.00875F)+Z_OFFSET, LCD_YELLOW);
 
 		/*******************************************************************/
 		/*
@@ -377,21 +366,21 @@ int main(void)
 		gfx_puts("X: ");
 		gfx_setCursor(15, 240);
 		char gyr_x_str[16];
-		sprintf(gyr_x_str, "%d", (int)(gyr_x*0.00875F));
+		sprintf(gyr_x_str, "%d", (int)(gyr_x*0.00875F+X_OFFSET));
 		gfx_puts(gyr_x_str);
 
 		gfx_setCursor(110, 200);
 		gfx_puts("Y: ");
 		gfx_setCursor(100, 240);
 		char gyr_y_str[16];
-		sprintf(gyr_y_str, "%d", (int)(gyr_y*0.00875F));
+		sprintf(gyr_y_str, "%d", (int)(gyr_y*0.00875F+Y_OFFSET));
 		gfx_puts(gyr_y_str);
 		
 		gfx_setCursor(190, 200);
 		gfx_puts("Z: ");
 		gfx_setCursor(175, 240);
 		char gyr_z_str[16];
-		sprintf(gyr_z_str, "%d", (int)(gyr_z*0.00875F));
+		sprintf(gyr_z_str, "%d", (int)(gyr_z*0.00875F+Z_OFFSET));
 		gfx_puts(gyr_z_str);
 		
 		
@@ -399,10 +388,10 @@ int main(void)
 		gfx_setCursor(5, 310);
 		gfx_puts("Bateria:    %");
 		
-		bateria = read_adc_naiive(1)*9/4095; // Actualización de la medición de la batería
+		bateria = read_adc_naiive(1)*100/4095; // Actualización de la medición de la batería
 		/* 
 		 *Escala y ajuste del valor del ADC en un voltaje aproximado de la batería.
-		 *La multiplicación por 9 se utiliza para ajustar el rango del ADC a un rango de 
+		 *La multiplicación por 100 se utiliza para ajustar el rango del ADC a un rango de 
 		 voltaje apropiado de la batería. El valor 4095 en el denominador representa el valor 
 		 máximo que se puede obtener del ADC debido a que se trata de uno de 12 bits (2^12 = 4096). 
 		 *Dividir por 4095 normaliza el valor del ADC al rango de 0 a 1.
@@ -415,7 +404,7 @@ int main(void)
 		gfx_puts(bateria_str);
 		
 		// Alarma de batería
-		if(bateria <= 7){ 
+		if(bateria <= 70){ 
 			bateria_baja = 1; 
 			gpio_set(GPIOG, GPIO14);
 		} else {
@@ -433,10 +422,11 @@ int main(void)
 			my_usart_print_int(USART1, (int)(gyr_x*0.00875F));
 			my_usart_print_int(USART1, (int)(gyr_y*0.00875F));
 			my_usart_print_int(USART1, (int)(gyr_z*0.00875F));
+			my_usart_print_int(USART1, bateria);
 			my_usart_print_int(USART1, bateria_baja);
-
+			gpio_set(GPIOG, GPIO13);
 		}
-		else { gfx_puts("USART: OFF"); }
+		else { gfx_puts("USART: OFF"); gpio_clear(GPIOG, GPIO13); }
 		lcd_show_frame();
 	} // fin del loop
 }

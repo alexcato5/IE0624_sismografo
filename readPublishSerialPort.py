@@ -88,6 +88,5 @@ while True:
   			"Bateria baja": escritura[4] 
 		}
 		escritura.clear()
-		print(json.dumps(diccionario, indent = 4))
 		cliente.publish(topic, json.dumps(diccionario, indent = 4))
 		cliente.loop()

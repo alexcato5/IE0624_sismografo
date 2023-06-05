@@ -419,9 +419,9 @@ int main(void)
 		gfx_setCursor(155, 310);
 		if (usart_encendido){ 
 			gfx_puts("USART:  ON"); 
-			my_usart_print_int(USART1, (int)(gyr_x*0.00875F));
-			my_usart_print_int(USART1, (int)(gyr_y*0.00875F));
-			my_usart_print_int(USART1, (int)(gyr_z*0.00875F));
+			my_usart_print_int(USART1, (int)(gyr_x*0.00875F)+X_OFFSET);
+			my_usart_print_int(USART1, (int)(gyr_y*0.00875F)+Y_OFFSET);
+			my_usart_print_int(USART1, (int)(gyr_z*0.00875F)+Z_OFFSET);
 			my_usart_print_int(USART1, bateria);
 			my_usart_print_int(USART1, bateria_baja);
 			gpio_set(GPIOG, GPIO13);
